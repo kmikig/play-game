@@ -2,7 +2,7 @@
 <html lang="ja">
 <head>
 <meta charset="UTF-8">
-<title>大会テトリス 完全版</title>
+<title>改良テトリス</title>
 <style>
 body{
     background:#111;
@@ -17,11 +17,7 @@ canvas{
     border:2px solid white;
 }
 .panel{ text-align:center; }
-.info{
-    font-size:14px;
-    margin-top:10px;
-    line-height:1.6;
-}
+.info{ font-size:14px; line-height:1.6; }
 </style>
 </head>
 
@@ -64,8 +60,8 @@ nextCtx.scale(20,20);
 
 const colors=[
  null,
- "#00ffff","#ffff00","#8000ff",
- "#00ff00","#ff0000","#0000ff","#ff8800"
+ "#00e5ff","#ffd500","#a000ff",
+ "#00e676","#ff1744","#2979ff","#ff9100"
 ];
 
 const arena = Array.from({length:20},()=>Array(12).fill(0));
@@ -79,8 +75,6 @@ const player={
     pos:{x:0,y:0},
     matrix:null,
     score:0,
-    combo:-1,
-    b2b:false,
     level:1
 };
 
@@ -114,9 +108,6 @@ function createPiece(t){
 function drawBlock(ctx,x,y,color){
     ctx.fillStyle=color;
     ctx.fillRect(x,y,1,1);
-    ctx.strokeStyle="#000";
-    ctx.lineWidth=0.05;
-    ctx.strokeRect(x,y,1,1);
 }
 
 function drawMatrix(m,o,ctx){
@@ -124,6 +115,18 @@ function drawMatrix(m,o,ctx){
         r.forEach((v,x)=>{
             if(v){
                 drawBlock(ctx,x+o.x,y+o.y,colors[v]);
+            }
+        });
+    });
+}
+
+// ★ 盤面グレー固定
+function drawArena(){
+    arena.forEach((row,y)=>{
+        row.forEach((value,x)=>{
+            if(value){
+                ctx.fillStyle="#666";
+                ctx.fillRect(x,y,1,1);
             }
         });
     });
@@ -239,7 +242,7 @@ function ghost(){
     }
     player.pos.y--;
 
-    ctx.globalAlpha=0.3;
+    ctx.globalAlpha=0.15;
     drawMatrix(player.matrix,player.pos,ctx);
     ctx.globalAlpha=1;
 
@@ -247,9 +250,10 @@ function ghost(){
 }
 
 function draw(){
+    ctx.fillStyle="#000";
     ctx.fillRect(0,0,canvas.width,canvas.height);
 
-    drawMatrix(arena,{x:0,y:0},ctx);
+    drawArena(); // ← グレー盤面
     ghost();
     drawMatrix(player.matrix,player.pos,ctx);
 
@@ -261,46 +265,11 @@ function draw(){
         drawMatrix(createPiece(t),{x:1,y:i*3},nextCtx);
     });
 
+    player.level = Math.floor(player.score/300)+1;
+
     document.getElementById("info").innerText =
         "Score:"+player.score+" Lv:"+player.level;
 }
 
 let dropCounter=0;
 let last=0;
-
-function update(t=0){
-    const delta=t-last;
-    last=t;
-    dropCounter+=delta;
-
-    if(dropCounter>800){
-        drop();
-        dropCounter=0;
-    }
-
-    draw();
-    requestAnimationFrame(update);
-}
-
-document.addEventListener("keydown",e=>{
-    if(e.key==="ArrowLeft") player.pos.x--;
-    if(e.key==="ArrowRight") player.pos.x++;
-    if(e.key==="ArrowDown") drop();
-    if(e.key==="ArrowUp") rotate(1);
-    if(e.key==="z") rotate(-1);
-    if(e.key===" ") hardDrop();
-    if(e.key==="c") holdPiece();
-
-    if(collide()){
-        if(e.key==="ArrowLeft") player.pos.x++;
-        if(e.key==="ArrowRight") player.pos.x--;
-    }
-});
-
-for(let i=0;i<5;i++) queue.push(nextPiece());
-spawn();
-update();
-</script>
-
-</body>
-</html>
