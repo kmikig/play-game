@@ -265,7 +265,7 @@ function draw(){
         drawMatrix(createPiece(t),{x:1,y:i*3},nextCtx);
     });
 
-    player.level = Math.floor(player.score/300)+1;
+    player.level = Math.floor(player.score/600)+1;
 
     document.getElementById("info").innerText =
         "Score:"+player.score+" Lv:"+player.level;
