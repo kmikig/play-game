@@ -273,3 +273,41 @@ function draw(){
 
 let dropCounter=0;
 let last=0;
+
+function update(t=0){
+    const delta=t-last;
+    last=t;
+    dropCounter+=delta;
+
+    if(dropCounter > 1000/(player.level*0.8)){
+        drop();
+        dropCounter=0;
+    }
+
+    draw();
+    requestAnimationFrame(update);
+}
+
+document.addEventListener("keydown",e=>{
+    if(e.key==="ArrowLeft") player.pos.x--;
+    if(e.key==="ArrowRight") player.pos.x++;
+    if(e.key==="ArrowDown") drop();
+    if(e.key==="ArrowUp") rotate(1);
+    if(e.key==="z") rotate(-1);
+    if(e.key===" ") hardDrop();
+    if(e.key==="c") holdPiece();
+
+    if(collide()){
+        if(e.key==="ArrowLeft") player.pos.x++;
+        if(e.key==="ArrowRight") player.pos.x--;
+    }
+});
+
+for(let i=0;i<5;i++) queue.push(nextPiece());
+queue.push(nextPiece());
+spawn();
+update();
+</script>
+
+</body>
+</html>
