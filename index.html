@@ -2,7 +2,7 @@
 <html lang="ja">
 <head>
 <meta charset="UTF-8">
-<title>大会レベルテトリス</title>
+<title>大会テトリス 完全版</title>
 <style>
 body{
     background:#111;
@@ -13,10 +13,15 @@ body{
     font-family:sans-serif;
 }
 canvas{
-    background:black;
+    background:#000;
     border:2px solid white;
 }
 .panel{ text-align:center; }
+.info{
+    font-size:14px;
+    margin-top:10px;
+    line-height:1.6;
+}
 </style>
 </head>
 
@@ -27,7 +32,18 @@ canvas{
 <canvas id="hold" width="80" height="80"></canvas>
 </div>
 
+<div>
 <canvas id="game" width="240" height="400"></canvas>
+
+<div class="info">
+<b>操作方法</b><br>
+← →：移動<br>
+↓：ソフトドロップ<br>
+↑：右回転 / Z：左回転<br>
+スペース：ハードドロップ<br>
+C：ホールド
+</div>
+</div>
 
 <div class="panel">
 <h3>NEXT</h3>
@@ -46,13 +62,16 @@ holdCtx.scale(20,20);
 const nextCtx = document.getElementById("next").getContext("2d");
 nextCtx.scale(20,20);
 
-const colors=[null,"cyan","yellow","purple","green","red","blue","orange"];
+const colors=[
+ null,
+ "#00ffff","#ffff00","#8000ff",
+ "#00ff00","#ff0000","#0000ff","#ff8800"
+];
 
 const arena = Array.from({length:20},()=>Array(12).fill(0));
 
 let hold=null;
 let canHold=true;
-
 let bag=[];
 let queue=[];
 
@@ -92,12 +111,19 @@ function createPiece(t){
     }[t];
 }
 
+function drawBlock(ctx,x,y,color){
+    ctx.fillStyle=color;
+    ctx.fillRect(x,y,1,1);
+    ctx.strokeStyle="#000";
+    ctx.lineWidth=0.05;
+    ctx.strokeRect(x,y,1,1);
+}
+
 function drawMatrix(m,o,ctx){
     m.forEach((r,y)=>{
         r.forEach((v,x)=>{
             if(v){
-                ctx.fillStyle=colors[v];
-                ctx.fillRect(x+o.x,y+o.y,1,1);
+                drawBlock(ctx,x+o.x,y+o.y,colors[v]);
             }
         });
     });
@@ -156,55 +182,36 @@ function drop(){
 }
 
 function hardDrop(){
-    let d=0;
     while(!collide()){
         player.pos.y++;
-        d++;
+        player.score+=2;
     }
     player.pos.y--;
-    player.score += d*2;
     lock();
 }
 
 function lock(){
     merge();
-    const lines = clearLines();
-    scoring(lines);
+    clearLines();
     spawn();
 }
 
 function clearLines(){
-    let count=0;
     outer:for(let y=19;y>=0;y--){
         for(let x=0;x<12;x++){
             if(arena[y][x]===0) continue outer;
         }
         arena.splice(y,1);
         arena.unshift(Array(12).fill(0));
-        count++;
+        player.score+=100;
         y++;
     }
-    return count;
-}
-
-function scoring(lines){
-    if(lines>0){
-        player.combo++;
-        let base=[0,100,300,500,800][lines];
-        if(player.b2b && lines>=4) base*=1.5;
-        player.score += base + player.combo*50;
-        player.b2b = lines>=4;
-    }else{
-        player.combo=-1;
-    }
-    player.level = Math.floor(player.score/1000)+1;
 }
 
 function spawn(){
     player.matrix = createPiece(queue.shift());
     queue.push(nextPiece());
-    player.pos.y=0;
-    player.pos.x=4;
+    player.pos={x:4,y:0};
     canHold=true;
 
     if(collide()){
@@ -231,14 +238,17 @@ function ghost(){
         player.pos.y++;
     }
     player.pos.y--;
+
     ctx.globalAlpha=0.3;
     drawMatrix(player.matrix,player.pos,ctx);
     ctx.globalAlpha=1;
+
     player.pos.y=y;
 }
 
 function draw(){
     ctx.fillRect(0,0,canvas.width,canvas.height);
+
     drawMatrix(arena,{x:0,y:0},ctx);
     ghost();
     drawMatrix(player.matrix,player.pos,ctx);
@@ -263,7 +273,7 @@ function update(t=0){
     last=t;
     dropCounter+=delta;
 
-    if(dropCounter>1000/Math.sqrt(player.level)){
+    if(dropCounter>800){
         drop();
         dropCounter=0;
     }
@@ -290,7 +300,7 @@ document.addEventListener("keydown",e=>{
 for(let i=0;i<5;i++) queue.push(nextPiece());
 spawn();
 update();
-
 </script>
+
 </body>
 </html>
