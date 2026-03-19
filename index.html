@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+  <!DOCTYPE html>
 <html lang="ja">
 <head>
 <meta charset="UTF-8">
@@ -187,7 +187,7 @@ function drop(){
 
         player.lockDelay++;
 
-        if(player.lockDelay > ８){
+        if(player.lockDelay > 20){
             lock();
             player.lockDelay = 0;
         }
@@ -327,7 +327,7 @@ document.addEventListener("keydown",e=>{
 
     player.lockDelay = 0;
 });
-queue.push(nextPiece());
+
 spawn();
 update();
 </script>
