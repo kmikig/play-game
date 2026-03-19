@@ -2,7 +2,7 @@
 <html lang="ja">
 <head>
 <meta charset="UTF-8">
-<title>改良テトリス</title>
+<title>改良テトリス（ハイスコア対応）</title>
 <style>
 body{
     background:#111;
@@ -71,6 +71,8 @@ let canHold=true;
 let bag=[];
 let queue=[];
 
+let highScore = localStorage.getItem("tetrisHighScore") || 0;
+
 const player={
     pos:{x:0,y:0},
     matrix:null,
@@ -120,7 +122,6 @@ function drawMatrix(m,o,ctx){
     });
 }
 
-// ★ 盤面グレー固定
 function drawArena(){
     arena.forEach((row,y)=>{
         row.forEach((value,x)=>{
@@ -132,16 +133,26 @@ function drawArena(){
     });
 }
 
-function collide(){
-    for(let y=0;y<player.matrix.length;y++){
-        for(let x=0;x<player.matrix[y].length;x++){
-            if(player.matrix[y][x] &&
-               (arena[y+player.pos.y]?.[x+player.pos.x])!==0){
-                return true;
+function checkCollision(matrix, offsetX, offsetY){
+    for(let y=0;y<matrix.length;y++){
+        for(let x=0;x<matrix[y].length;x++){
+            if(matrix[y][x]){
+                if(
+                    arena[y+offsetY]?.[x+offsetX] !== 0 ||
+                    x+offsetX < 0 ||
+                    x+offsetX >= 12 ||
+                    y+offsetY >= 20
+                ){
+                    return true;
+                }
             }
         }
     }
     return false;
+}
+
+function collide(){
+    return checkCollision(player.matrix, player.pos.x, player.pos.y);
 }
 
 function merge(){
@@ -209,6 +220,11 @@ function clearLines(){
         player.score+=100;
         y++;
     }
+
+    if(player.score > highScore){
+        highScore = player.score;
+        localStorage.setItem("tetrisHighScore", highScore);
+    }
 }
 
 function spawn(){
@@ -218,6 +234,11 @@ function spawn(){
     canHold=true;
 
     if(collide()){
+        if(player.score > highScore){
+            highScore = player.score;
+            localStorage.setItem("tetrisHighScore", highScore);
+        }
+
         arena.forEach(r=>r.fill(0));
         player.score=0;
     }
@@ -236,24 +257,26 @@ function holdPiece(){
 }
 
 function ghost(){
-    let y=player.pos.y;
-    while(!collide()){
-        player.pos.y++;
+    let ghostY = player.pos.y;
+
+    while(true){
+        ghostY++;
+        if(checkCollision(player.matrix, player.pos.x, ghostY)){
+            ghostY--;
+            break;
+        }
     }
-    player.pos.y--;
 
-    ctx.globalAlpha=0.15;
-    drawMatrix(player.matrix,player.pos,ctx);
-    ctx.globalAlpha=1;
-
-    player.pos.y=y;
+    ctx.globalAlpha = 0.15;
+    drawMatrix(player.matrix, {x:player.pos.x, y:ghostY}, ctx);
+    ctx.globalAlpha = 1;
 }
 
 function draw(){
     ctx.fillStyle="#000";
     ctx.fillRect(0,0,canvas.width,canvas.height);
 
-    drawArena(); // ← グレー盤面
+    drawArena();
     ghost();
     drawMatrix(player.matrix,player.pos,ctx);
 
@@ -268,7 +291,9 @@ function draw(){
     player.level = Math.floor(player.score/300)+1;
 
     document.getElementById("info").innerText =
-        "Score:"+player.score+" Lv:"+player.level;
+        "Score:"+player.score+
+        "  High:"+highScore+
+        "  Lv:"+player.level;
 }
 
 let dropCounter=0;
