@@ -2,7 +2,7 @@
 <html lang="ja">
 <head>
 <meta charset="UTF-8">
-<title>テトリス</title>
+<title>テトリス完成版</title>
 <style>
 body{
     background:#111;
@@ -17,7 +17,7 @@ canvas{
     border:2px solid white;
 }
 .panel{ text-align:center; }
-.info{ font-size:14px; }
+.info{ font-size:14px; line-height:1.6; }
 </style>
 </head>
 
@@ -58,11 +58,7 @@ holdCtx.scale(20,20);
 const nextCtx = document.getElementById("next").getContext("2d");
 nextCtx.scale(20,20);
 
-const colors=[
- null,
- "#00e5ff","#ffd500","#a000ff",
- "#00e676","#ff1744","#2979ff","#ff9100"
-];
+const colors=[null,"#00e5ff","#ffd500","#a000ff","#00e676","#ff1744","#2979ff","#ff9100"];
 
 const arena = Array.from({length:20},()=>Array(12).fill(0));
 
@@ -70,13 +66,14 @@ let hold=null;
 let canHold=true;
 let bag=[];
 let queue=[];
+let highScore = localStorage.getItem("tetrisHighScore") || 0;
 
 const player={
     pos:{x:0,y:0},
     matrix:null,
     score:0,
     level:1,
-    lockTime:0
+    lockTime:0 // ← 時間ベース
 };
 
 function shuffle(a){
@@ -240,8 +237,13 @@ function draw(){
 
     player.level=Math.floor(player.score/300)+1;
 
-    document.getElementById("info").innerText =
-        "Score:"+player.score+" Lv:"+player.level;
+    if(player.score>highScore){
+        highScore=player.score;
+        localStorage.setItem("tetrisHighScore",highScore);
+    }
+
+    document.getElementById("info").innerText=
+        "Score:"+player.score+" Lv:"+player.level+" High:"+highScore;
 }
 
 let dropCounter=0;
@@ -252,6 +254,7 @@ function update(time=0){
     last=time;
     dropCounter+=delta;
 
+    // ↓↓↓ ここが本質（ロックディレイ）
     if(dropCounter > 1000/(player.level*0.8)){
         player.pos.y++;
 
@@ -260,7 +263,7 @@ function update(time=0){
 
             player.lockTime += delta;
 
-            if(player.lockTime > 120){ // ← ★ここで間を短く（120ms）
+            if(player.lockTime > 150){ // ← ★ここで間調整（おすすめ150）
                 merge();
                 clearLines();
                 spawn();
