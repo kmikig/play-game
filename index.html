@@ -2,7 +2,7 @@
 <html lang="ja">
 <head>
 <meta charset="UTF-8">
-<title>テトリス（ランキング付き）</title>
+<title>テトリス（ランキング＋回転修正版）</title>
 <style>
 body{
     background:#111;
@@ -32,7 +32,8 @@ canvas{
 <canvas id="game" width="240" height="400"></canvas>
 
 <div class="info">
-← →：移動 / ↓：落下 / ↑：回転 / Z：逆回転<br>
+← →：移動 / ↓：落下<br>
+↑：右回転 / Z：左回転<br>
 スペース：ハードドロップ / C：ホールド
 </div>
 </div>
@@ -64,7 +65,7 @@ let canHold=true;
 let bag=[];
 let queue=[];
 
-// ★ ランキング
+// ランキング
 let ranking = JSON.parse(localStorage.getItem("tetrisRanking")) || [];
 
 const player={
@@ -131,7 +132,12 @@ function checkCollision(matrix,ox,oy){
     for(let y=0;y<matrix.length;y++){
         for(let x=0;x<matrix[y].length;x++){
             if(matrix[y][x]){
-                if(arena[y+oy]?.[x+ox]!==0||x+ox<0||x+ox>=12||y+oy>=20){
+                if(
+                    arena[y+oy]?.[x+ox]!==0 ||
+                    x+ox<0 ||
+                    x+ox>=12 ||
+                    y+oy>=20
+                ){
                     return true;
                 }
             }
@@ -142,6 +148,31 @@ function checkCollision(matrix,ox,oy){
 
 function collide(){
     return checkCollision(player.matrix,player.pos.x,player.pos.y);
+}
+
+// ★ 回転（復活）
+function rotate(dir){
+    const m = player.matrix;
+
+    for(let y=0;y<m.length;y++){
+        for(let x=0;x<y;x++){
+            [m[x][y], m[y][x]] = [m[y][x], m[x][y]];
+        }
+    }
+
+    if(dir > 0) m.forEach(row => row.reverse());
+    else m.reverse();
+
+    if(collide()){
+        player.pos.x++;
+        if(collide()){
+            player.pos.x -= 2;
+            if(collide()){
+                player.pos.x++;
+                rotate(-dir);
+            }
+        }
+    }
 }
 
 function merge(){
@@ -260,8 +291,11 @@ document.addEventListener("keydown",e=>{
     if(e.key==="ArrowLeft") player.pos.x--;
     if(e.key==="ArrowRight") player.pos.x++;
     if(e.key==="ArrowDown") drop();
+    if(e.key==="ArrowUp") rotate(1);
+    if(e.key==="z") rotate(-1);
     if(e.key===" ") hardDrop();
     if(e.key==="c") holdPiece();
+
     if(collide()){
         if(e.key==="ArrowLeft") player.pos.x++;
         if(e.key==="ArrowRight") player.pos.x--;
@@ -275,4 +309,4 @@ update();
 </script>
 
 </body>
-</html>
+</html></html>
