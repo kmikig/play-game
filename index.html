@@ -2,7 +2,7 @@
 <html lang="ja">
 <head>
 <meta charset="UTF-8">
-<title>テトリス（レベル速度対応）</title>
+<title>テトリス（Tスピン対応・完全版）</title>
 <style>
 body{
     background:#111;
@@ -71,7 +71,9 @@ const player={
     pos:{x:0,y:0},
     matrix:null,
     score:0,
-    level:1
+    level:1,
+    lastRotate:false,
+    isT:false
 };
 
 const colors=[null,"#00e5ff","#ffd500","#a000ff","#00e676","#ff1744","#2979ff","#ff9100"];
@@ -131,7 +133,12 @@ function checkCollision(matrix,ox,oy){
     for(let y=0;y<matrix.length;y++){
         for(let x=0;x<matrix[y].length;x++){
             if(matrix[y][x]){
-                if(arena[y+oy]?.[x+ox]!==0||x+ox<0||x+ox>=12||y+oy>=20){
+                if(
+                    arena[y+oy]?.[x+ox]!==0 ||
+                    x+ox<0 ||
+                    x+ox>=12 ||
+                    y+oy>=20
+                ){
                     return true;
                 }
             }
@@ -145,6 +152,8 @@ function collide(){
 }
 
 function rotate(dir){
+    player.lastRotate = true;
+
     const m=player.matrix;
     for(let y=0;y<m.length;y++){
         for(let x=0;x<y;x++){
@@ -173,6 +182,7 @@ function merge(){
 }
 
 function drop(){
+    player.lastRotate = false;
     player.pos.y++;
     if(collide()){
         player.pos.y--;
@@ -183,6 +193,7 @@ function drop(){
 }
 
 function hardDrop(){
+    player.lastRotate = false;
     while(!collide()){
         player.pos.y++;
         player.score+=2;
@@ -193,20 +204,55 @@ function hardDrop(){
     spawn();
 }
 
+function isTSpin(){
+    if(!player.isT || !player.lastRotate) return false;
+
+    const px = player.pos.x;
+    const py = player.pos.y;
+
+    let count = 0;
+
+    const corners = [
+        [px,py],
+        [px+2,py],
+        [px,py+2],
+        [px+2,py+2]
+    ];
+
+    corners.forEach(([x,y])=>{
+        if(arena[y]?.[x] !== 0){
+            count++;
+        }
+    });
+
+    return count >= 3;
+}
+
 function clearLines(){
+    let lines = 0;
+
     outer:for(let y=19;y>=0;y--){
         for(let x=0;x<12;x++){
             if(arena[y][x]===0) continue outer;
         }
         arena.splice(y,1);
         arena.unshift(Array(12).fill(0));
-        player.score+=100;
+        lines++;
         y++;
     }
+
+    if(isTSpin()){
+        player.score += 400;
+    }else{
+        player.score += lines * 100;
+    }
+
+    player.lastRotate = false;
 }
 
 function spawn(){
     player.matrix=createPiece(queue.shift());
+    player.isT = (JSON.stringify(player.matrix) === JSON.stringify(createPiece("T")));
     queue.push(nextPiece());
     player.pos={x:4,y:0};
     canHold=true;
@@ -261,7 +307,6 @@ function draw(){
         drawMatrix(createPiece(t),{x:1,y:i*3},nextCtx);
     });
 
-    // ★ レベル計算
     player.level = Math.floor(player.score / 600) + 1;
 
     document.getElementById("info").innerText =
@@ -274,7 +319,6 @@ function update(t=0){
     const d=t-last; last=t;
     dropCounter+=d;
 
-    // ★ レベルで速度変化（ここ重要）
     let speed = Math.max(100, 1000 - (player.level-1)*100);
 
     if(dropCounter > speed){
