@@ -2,7 +2,7 @@
 <html lang="ja">
 <head>
 <meta charset="UTF-8">
-<title>テトリス完成版</title>
+<title>改良テトリス</title>
 <style>
 body{
     background:#111;
@@ -71,14 +71,11 @@ let canHold=true;
 let bag=[];
 let queue=[];
 
-let highScore = localStorage.getItem("tetrisHighScore") || 0;
-
 const player={
     pos:{x:0,y:0},
     matrix:null,
     score:0,
-    level:1,
-    lockDelay:0
+    level:1
 };
 
 function shuffle(a){
@@ -123,6 +120,7 @@ function drawMatrix(m,o,ctx){
     });
 }
 
+// ★ 盤面グレー固定
 function drawArena(){
     arena.forEach((row,y)=>{
         row.forEach((value,x)=>{
@@ -176,23 +174,13 @@ function rotate(dir){
             }
         }
     }
-    player.lockDelay = 0;
 }
 
 function drop(){
     player.pos.y++;
-
     if(collide()){
         player.pos.y--;
-
-        player.lockDelay++;
-
-        if(player.lockDelay > 20){
-            lock();
-            player.lockDelay = 0;
-        }
-    }else{
-        player.lockDelay = 0;
+        lock();
     }
 }
 
@@ -224,13 +212,8 @@ function clearLines(){
 }
 
 function spawn(){
-    while(queue.length < 5){
-        queue.push(nextPiece());
-    }
-
     player.matrix = createPiece(queue.shift());
     queue.push(nextPiece());
-
     player.pos={x:4,y:0};
     canHold=true;
 
@@ -250,7 +233,6 @@ function holdPiece(){
         player.pos={x:4,y:0};
     }
     canHold=false;
-    player.lockDelay = 0;
 }
 
 function ghost(){
@@ -271,7 +253,7 @@ function draw(){
     ctx.fillStyle="#000";
     ctx.fillRect(0,0,canvas.width,canvas.height);
 
-    drawArena();
+    drawArena(); // ← グレー盤面
     ghost();
     drawMatrix(player.matrix,player.pos,ctx);
 
@@ -285,13 +267,8 @@ function draw(){
 
     player.level = Math.floor(player.score/300)+1;
 
-    if(player.score > highScore){
-        highScore = player.score;
-        localStorage.setItem("tetrisHighScore", highScore);
-    }
-
     document.getElementById("info").innerText =
-        "Score:"+player.score+" Lv:"+player.level+" High:"+highScore;
+        "Score:"+player.score+" Lv:"+player.level;
 }
 
 let dropCounter=0;
@@ -324,10 +301,9 @@ document.addEventListener("keydown",e=>{
         if(e.key==="ArrowLeft") player.pos.x++;
         if(e.key==="ArrowRight") player.pos.x--;
     }
-
-    player.lockDelay = 0;
 });
 
+for(let i=0;i<5;i++) queue.push(nextPiece());
 spawn();
 update();
 </script>
