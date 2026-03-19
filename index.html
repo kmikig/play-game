@@ -2,7 +2,7 @@
 <html lang="ja">
 <head>
 <meta charset="UTF-8">
-<title>テトリス（Tスピン対応・完全版）</title>
+<title>テトリス（Tスピン表示付き）</title>
 <style>
 body{
     background:#111;
@@ -66,6 +66,10 @@ let bag=[];
 let queue=[];
 
 let ranking = JSON.parse(localStorage.getItem("tetrisRanking")) || [];
+
+// ★ 表示メッセージ
+let message = "";
+let messageTimer = 0;
 
 const player={
     pos:{x:0,y:0},
@@ -133,12 +137,7 @@ function checkCollision(matrix,ox,oy){
     for(let y=0;y<matrix.length;y++){
         for(let x=0;x<matrix[y].length;x++){
             if(matrix[y][x]){
-                if(
-                    arena[y+oy]?.[x+ox]!==0 ||
-                    x+ox<0 ||
-                    x+ox>=12 ||
-                    y+oy>=20
-                ){
+                if(arena[y+oy]?.[x+ox]!==0||x+ox<0||x+ox>=12||y+oy>=20){
                     return true;
                 }
             }
@@ -211,25 +210,17 @@ function isTSpin(){
     const py = player.pos.y;
 
     let count = 0;
-
-    const corners = [
-        [px,py],
-        [px+2,py],
-        [px,py+2],
-        [px+2,py+2]
-    ];
+    const corners=[[px,py],[px+2,py],[px,py+2],[px+2,py+2]];
 
     corners.forEach(([x,y])=>{
-        if(arena[y]?.[x] !== 0){
-            count++;
-        }
+        if(arena[y]?.[x] !== 0) count++;
     });
 
-    return count >= 3;
+    return count>=3;
 }
 
 function clearLines(){
-    let lines = 0;
+    let lines=0;
 
     outer:for(let y=19;y>=0;y--){
         for(let x=0;x<12;x++){
@@ -242,12 +233,17 @@ function clearLines(){
     }
 
     if(isTSpin()){
-        player.score += 400;
+        player.score+=400;
+
+        // ★ Tスピン表示
+        message="T-SPIN!";
+        messageTimer=1000;
+
     }else{
-        player.score += lines * 100;
+        player.score+=lines*100;
     }
 
-    player.lastRotate = false;
+    player.lastRotate=false;
 }
 
 function spawn(){
@@ -299,6 +295,13 @@ function draw(){
     ghost();
     drawMatrix(player.matrix,player.pos,ctx);
 
+    // ★ メッセージ表示
+    if(messageTimer > 0){
+        ctx.fillStyle="orange";
+        ctx.font="1px sans-serif";
+        ctx.fillText(message, 3, 10);
+    }
+
     holdCtx.clearRect(0,0,80,80);
     if(hold) drawMatrix(hold,{x:1,y:1},holdCtx);
 
@@ -324,6 +327,11 @@ function update(t=0){
     if(dropCounter > speed){
         drop();
         dropCounter=0;
+    }
+
+    // ★ タイマー減少
+    if(messageTimer > 0){
+        messageTimer -= d;
     }
 
     draw();
