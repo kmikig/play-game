@@ -2,7 +2,7 @@
 <html lang="ja">
 <head>
 <meta charset="UTF-8">
-<title>テトリス（ランキング＋回転修正版）</title>
+<title>テトリス（レベル速度対応）</title>
 <style>
 body{
     background:#111;
@@ -65,7 +65,6 @@ let canHold=true;
 let bag=[];
 let queue=[];
 
-// ランキング
 let ranking = JSON.parse(localStorage.getItem("tetrisRanking")) || [];
 
 const player={
@@ -85,7 +84,7 @@ function updateRanking(){
 }
 
 function drawRanking(){
-    const el = document.getElementById("ranking");
+    const el=document.getElementById("ranking");
     el.innerHTML="";
     ranking.forEach(s=>{
         const li=document.createElement("li");
@@ -132,12 +131,7 @@ function checkCollision(matrix,ox,oy){
     for(let y=0;y<matrix.length;y++){
         for(let x=0;x<matrix[y].length;x++){
             if(matrix[y][x]){
-                if(
-                    arena[y+oy]?.[x+ox]!==0 ||
-                    x+ox<0 ||
-                    x+ox>=12 ||
-                    y+oy>=20
-                ){
+                if(arena[y+oy]?.[x+ox]!==0||x+ox<0||x+ox>=12||y+oy>=20){
                     return true;
                 }
             }
@@ -150,23 +144,20 @@ function collide(){
     return checkCollision(player.matrix,player.pos.x,player.pos.y);
 }
 
-// ★ 回転（復活）
 function rotate(dir){
-    const m = player.matrix;
-
+    const m=player.matrix;
     for(let y=0;y<m.length;y++){
         for(let x=0;x<y;x++){
-            [m[x][y], m[y][x]] = [m[y][x], m[x][y]];
+            [m[x][y],m[y][x]]=[m[y][x],m[x][y]];
         }
     }
-
-    if(dir > 0) m.forEach(row => row.reverse());
+    if(dir>0) m.forEach(r=>r.reverse());
     else m.reverse();
 
     if(collide()){
         player.pos.x++;
         if(collide()){
-            player.pos.x -= 2;
+            player.pos.x-=2;
             if(collide()){
                 player.pos.x++;
                 rotate(-dir);
@@ -270,8 +261,11 @@ function draw(){
         drawMatrix(createPiece(t),{x:1,y:i*3},nextCtx);
     });
 
+    // ★ レベル計算
+    player.level = Math.floor(player.score / 600) + 1;
+
     document.getElementById("info").innerText =
-        "Score:"+player.score;
+        "Score:"+player.score+"  Lv:"+player.level;
 }
 
 let dropCounter=0,last=0;
@@ -279,10 +273,15 @@ let dropCounter=0,last=0;
 function update(t=0){
     const d=t-last; last=t;
     dropCounter+=d;
-    if(dropCounter>1000){
+
+    // ★ レベルで速度変化（ここ重要）
+    let speed = Math.max(100, 1000 - (player.level-1)*100);
+
+    if(dropCounter > speed){
         drop();
         dropCounter=0;
     }
+
     draw();
     requestAnimationFrame(update);
 }
@@ -309,4 +308,4 @@ update();
 </script>
 
 </body>
-</html></html>
+</html>
