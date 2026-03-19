@@ -2,7 +2,7 @@
 <html lang="ja">
 <head>
 <meta charset="UTF-8">
-<title>改良テトリス（ハイスコア対応）</title>
+<title>テトリス（ランキング付き）</title>
 <style>
 body{
     background:#111;
@@ -17,7 +17,7 @@ canvas{
     border:2px solid white;
 }
 .panel{ text-align:center; }
-.info{ font-size:14px; line-height:1.6; }
+.info{ font-size:14px; }
 </style>
 </head>
 
@@ -32,12 +32,8 @@ canvas{
 <canvas id="game" width="240" height="400"></canvas>
 
 <div class="info">
-<b>操作方法</b><br>
-← →：移動<br>
-↓：ソフトドロップ<br>
-↑：右回転 / Z：左回転<br>
-スペース：ハードドロップ<br>
-C：ホールド
+← →：移動 / ↓：落下 / ↑：回転 / Z：逆回転<br>
+スペース：ハードドロップ / C：ホールド
 </div>
 </div>
 
@@ -45,6 +41,9 @@ C：ホールド
 <h3>NEXT</h3>
 <canvas id="next" width="80" height="200"></canvas>
 <p id="info"></p>
+
+<h3>🏆ランキング</h3>
+<ol id="ranking"></ol>
 </div>
 
 <script>
@@ -58,12 +57,6 @@ holdCtx.scale(20,20);
 const nextCtx = document.getElementById("next").getContext("2d");
 nextCtx.scale(20,20);
 
-const colors=[
- null,
- "#00e5ff","#ffd500","#a000ff",
- "#00e676","#ff1744","#2979ff","#ff9100"
-];
-
 const arena = Array.from({length:20},()=>Array(12).fill(0));
 
 let hold=null;
@@ -71,7 +64,8 @@ let canHold=true;
 let bag=[];
 let queue=[];
 
-let highScore = localStorage.getItem("tetrisHighScore") || 0;
+// ★ ランキング
+let ranking = JSON.parse(localStorage.getItem("tetrisRanking")) || [];
 
 const player={
     pos:{x:0,y:0},
@@ -79,6 +73,25 @@ const player={
     score:0,
     level:1
 };
+
+const colors=[null,"#00e5ff","#ffd500","#a000ff","#00e676","#ff1744","#2979ff","#ff9100"];
+
+function updateRanking(){
+    ranking.push(player.score);
+    ranking.sort((a,b)=>b-a);
+    ranking = ranking.slice(0,5);
+    localStorage.setItem("tetrisRanking",JSON.stringify(ranking));
+}
+
+function drawRanking(){
+    const el = document.getElementById("ranking");
+    el.innerHTML="";
+    ranking.forEach(s=>{
+        const li=document.createElement("li");
+        li.textContent=s;
+        el.appendChild(li);
+    });
+}
 
 function shuffle(a){
     for(let i=a.length-1;i>0;i--){
@@ -89,9 +102,7 @@ function shuffle(a){
 }
 
 function nextPiece(){
-    if(bag.length===0){
-        bag = shuffle(["T","J","L","O","S","Z","I"]);
-    }
+    if(bag.length===0) bag=shuffle(["T","J","L","O","S","Z","I"]);
     return bag.pop();
 }
 
@@ -107,42 +118,20 @@ function createPiece(t){
     }[t];
 }
 
-function drawBlock(ctx,x,y,color){
-    ctx.fillStyle=color;
-    ctx.fillRect(x,y,1,1);
-}
-
 function drawMatrix(m,o,ctx){
-    m.forEach((r,y)=>{
-        r.forEach((v,x)=>{
-            if(v){
-                drawBlock(ctx,x+o.x,y+o.y,colors[v]);
-            }
-        });
-    });
+    m.forEach((r,y)=>r.forEach((v,x)=>{
+        if(v){
+            ctx.fillStyle=colors[v];
+            ctx.fillRect(x+o.x,y+o.y,1,1);
+        }
+    }));
 }
 
-function drawArena(){
-    arena.forEach((row,y)=>{
-        row.forEach((value,x)=>{
-            if(value){
-                ctx.fillStyle="#666";
-                ctx.fillRect(x,y,1,1);
-            }
-        });
-    });
-}
-
-function checkCollision(matrix, offsetX, offsetY){
+function checkCollision(matrix,ox,oy){
     for(let y=0;y<matrix.length;y++){
         for(let x=0;x<matrix[y].length;x++){
             if(matrix[y][x]){
-                if(
-                    arena[y+offsetY]?.[x+offsetX] !== 0 ||
-                    x+offsetX < 0 ||
-                    x+offsetX >= 12 ||
-                    y+offsetY >= 20
-                ){
+                if(arena[y+oy]?.[x+ox]!==0||x+ox<0||x+ox>=12||y+oy>=20){
                     return true;
                 }
             }
@@ -152,46 +141,22 @@ function checkCollision(matrix, offsetX, offsetY){
 }
 
 function collide(){
-    return checkCollision(player.matrix, player.pos.x, player.pos.y);
+    return checkCollision(player.matrix,player.pos.x,player.pos.y);
 }
 
 function merge(){
-    player.matrix.forEach((r,y)=>{
-        r.forEach((v,x)=>{
-            if(v){
-                arena[y+player.pos.y][x+player.pos.x]=v;
-            }
-        });
-    });
-}
-
-function rotate(dir){
-    const m=player.matrix;
-    for(let y=0;y<m.length;y++){
-        for(let x=0;x<y;x++){
-            [m[x][y],m[y][x]]=[m[y][x],m[x][y]];
-        }
-    }
-    if(dir>0) m.forEach(r=>r.reverse());
-    else m.reverse();
-
-    if(collide()){
-        player.pos.x++;
-        if(collide()){
-            player.pos.x-=2;
-            if(collide()){
-                player.pos.x++;
-                rotate(-dir);
-            }
-        }
-    }
+    player.matrix.forEach((r,y)=>r.forEach((v,x)=>{
+        if(v) arena[y+player.pos.y][x+player.pos.x]=v;
+    }));
 }
 
 function drop(){
     player.pos.y++;
     if(collide()){
         player.pos.y--;
-        lock();
+        merge();
+        clearLines();
+        spawn();
     }
 }
 
@@ -201,10 +166,6 @@ function hardDrop(){
         player.score+=2;
     }
     player.pos.y--;
-    lock();
-}
-
-function lock(){
     merge();
     clearLines();
     spawn();
@@ -220,25 +181,17 @@ function clearLines(){
         player.score+=100;
         y++;
     }
-
-    if(player.score > highScore){
-        highScore = player.score;
-        localStorage.setItem("tetrisHighScore", highScore);
-    }
 }
 
 function spawn(){
-    player.matrix = createPiece(queue.shift());
+    player.matrix=createPiece(queue.shift());
     queue.push(nextPiece());
     player.pos={x:4,y:0};
     canHold=true;
 
     if(collide()){
-        if(player.score > highScore){
-            highScore = player.score;
-            localStorage.setItem("tetrisHighScore", highScore);
-        }
-
+        updateRanking();
+        drawRanking();
         arena.forEach(r=>r.fill(0));
         player.score=0;
     }
@@ -247,7 +200,7 @@ function spawn(){
 function holdPiece(){
     if(!canHold) return;
     if(!hold){
-        hold = player.matrix;
+        hold=player.matrix;
         spawn();
     }else{
         [hold,player.matrix]=[player.matrix,hold];
@@ -257,26 +210,24 @@ function holdPiece(){
 }
 
 function ghost(){
-    let ghostY = player.pos.y;
-
-    while(true){
-        ghostY++;
-        if(checkCollision(player.matrix, player.pos.x, ghostY)){
-            ghostY--;
-            break;
-        }
-    }
-
-    ctx.globalAlpha = 0.15;
-    drawMatrix(player.matrix, {x:player.pos.x, y:ghostY}, ctx);
-    ctx.globalAlpha = 1;
+    let y=player.pos.y;
+    while(!checkCollision(player.matrix,player.pos.x,y+1)) y++;
+    ctx.globalAlpha=0.15;
+    drawMatrix(player.matrix,{x:player.pos.x,y},ctx);
+    ctx.globalAlpha=1;
 }
 
 function draw(){
     ctx.fillStyle="#000";
     ctx.fillRect(0,0,canvas.width,canvas.height);
 
-    drawArena();
+    arena.forEach((r,y)=>r.forEach((v,x)=>{
+        if(v){
+            ctx.fillStyle="#666";
+            ctx.fillRect(x,y,1,1);
+        }
+    }));
+
     ghost();
     drawMatrix(player.matrix,player.pos,ctx);
 
@@ -288,27 +239,19 @@ function draw(){
         drawMatrix(createPiece(t),{x:1,y:i*3},nextCtx);
     });
 
-    player.level = Math.floor(player.score/600)+1;
-
     document.getElementById("info").innerText =
-        "Score:"+player.score+
-        "  High:"+highScore+
-        "  Lv:"+player.level;
+        "Score:"+player.score;
 }
 
-let dropCounter=0;
-let last=0;
+let dropCounter=0,last=0;
 
 function update(t=0){
-    const delta=t-last;
-    last=t;
-    dropCounter+=delta;
-
-    if(dropCounter > 1000/(player.level*0.8)){
+    const d=t-last; last=t;
+    dropCounter+=d;
+    if(dropCounter>1000){
         drop();
         dropCounter=0;
     }
-
     draw();
     requestAnimationFrame(update);
 }
@@ -317,11 +260,8 @@ document.addEventListener("keydown",e=>{
     if(e.key==="ArrowLeft") player.pos.x--;
     if(e.key==="ArrowRight") player.pos.x++;
     if(e.key==="ArrowDown") drop();
-    if(e.key==="ArrowUp") rotate(1);
-    if(e.key==="z") rotate(-1);
     if(e.key===" ") hardDrop();
     if(e.key==="c") holdPiece();
-
     if(collide()){
         if(e.key==="ArrowLeft") player.pos.x++;
         if(e.key==="ArrowRight") player.pos.x--;
@@ -329,6 +269,7 @@ document.addEventListener("keydown",e=>{
 });
 
 for(let i=0;i<5;i++) queue.push(nextPiece());
+drawRanking();
 spawn();
 update();
 </script>
